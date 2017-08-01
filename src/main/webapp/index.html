@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Start Page</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+
+        <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js"></script>
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+        <!-- Optional theme -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
+
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+
+
+        <style>
+
+            footer{
+                position: absolute;
+                bottom: 20px;
+                left: 35%;
+            }
+
+            #tempo{
+                position: absolute;
+                bottom: 20%;
+                left: 80%;
+            }
+
+            #registros{
+                position: absolute;
+                bottom: 17%;
+                left: 80%;
+            }
+
+            #carregar {
+                margin: 20px 0;
+                border: solid;
+                padding: 5px;
+            }
+
+            #etl {
+                margin-top: 50px;
+            }
+
+            #carregar, #status, #etl {
+                display: none;
+            }
+
+            body {
+                padding-top: 40px;
+                padding-bottom: 40px;
+                background-color: #eee;
+            }
+
+            .form-signin {
+                max-width: 330px;
+                padding: 15px;
+                margin: 0 auto;
+            }
+            .form-signin .form-signin-heading,
+            .form-signin .checkbox {
+                margin-bottom: 10px;
+            }
+            .form-signin .checkbox {
+                font-weight: normal;
+            }
+            .form-signin .form-control {
+                position: relative;
+                height: auto;
+                -webkit-box-sizing: border-box;
+                box-sizing: border-box;
+                padding: 10px;
+                font-size: 16px;
+            }
+            .form-signin .form-control:focus {
+                z-index: 2;
+            }
+            .form-signin input[type="email"] {
+                margin-bottom: -1px;
+                border-bottom-right-radius: 0;
+                border-bottom-left-radius: 0;
+            }
+            .form-signin input[type="password"] {
+                margin-bottom: 10px;
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
+            }
+        </style>
+        <script>
+
+            var websocket = null;
+
+            function inicializar() {
+                var url = "ws://localhost:8080/trabalho5/status";
+
+                console.log("tentando abrir conexão em " + url);
+
+                websocket = new WebSocket(url);
+
+
+                websocket.onopen = function () {
+                    websocket.send("conectar:" + $('#usuario').val() + ":" + $('#carga')[0].checked + ":" + $('#senha').val());
+                };
+
+                websocket.onmessage = function (evt) {
+                    data = JSON.parse(evt.data);
+                    if (data.message) {
+                        if (data.add) {
+                            document.getElementById("permanente").innerHTML += data.message + "<br>";
+                            $("#concluido").text(data.message);
+                        } else {
+                            document.getElementById("temporaria").innerHTML = data.message;
+                        }
+                    }
+                    if (data.status) {
+                        $("#pgb" + data.caso).css("width", data.status + "%");
+                        $("#status" + data.caso).text(data.status);
+                    }
+                    if (data.adicional) {
+                        $("#adicional").text(data.adicional);
+                    }
+                    if (data.registros) {
+                        $("#registros").text(data.registros + "K registros inseridos.");
+                    }
+                    if (data.erro) {
+                        document.getElementById("erros").innerHTML += '<br> <span class="label label-danger" id="erro">' + data.erro + '</span>';
+                    }
+                    if (data.time) {
+                        document.getElementById("tempo").innerHTML = "tempo: " + data.time + " segundos";
+                        $('#login').hide();
+                        $('#status').show();
+                        if ($('#carga')[0].checked) {
+                            $('#carregar').show();
+                        } else {
+                            $('#etl').show();
+                        }
+                    }
+                }
+
+            }
+
+            function carregar() {
+
+                opcao = ($('#user')[0].checked ? 'u' : '') + ($('#model')[0].checked ? 'm' : '') + ($('#card')[0].checked ? 'c' : '') + ($('#prognose')[0].checked ? 'p' : '');
+
+                if (websocket)
+                    websocket.send("carregar:" + $('#quantidade').val() + ":" + opcao + ":" + $('#rapido')[0].checked);
+                else
+                    alert('inicialize primeiro!');
+            }
+
+            function  etl() {
+                if (websocket)
+                    websocket.send("etl:" + $('#rapido')[0].checked);
+                else
+                    alert('inicialize primeiro!');
+            }
+
+        </script>
+    </head>
+    <body>
+
+        <h1 style="text-align: center; margin-top: -20px;">Trabalho de Gerência de Banco de dados</h1>
+
+        <div class="container">
+
+            <div class="form-signin"  id="login">
+                <h2 class="form-signin-heading">Ferramenta para ETL</h2>
+                <label for="inputEmail" class="sr-only">Email address</label>
+                <input type="text" id="usuario" class="form-control" placeholder="usuario do banco" required autofocus value="system">
+                <label for="inputPassword" class="sr-only">Password</label>
+                <input type="password" id="senha" class="form-control" placeholder="senha" required value="123">
+
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" value="Popular Banco Principal" id="carga"> Popular Banco Principal
+                    </label>
+                </div>
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" value="modo-rapido" id="rapido" checked> Modo rápido
+                    </label>
+                </div>
+                <button class="btn btn-lg btn-primary btn-block" onclick="inicializar()">Carregar!</button>
+            </div>
+
+            <div id="carregar">
+
+                Carregar na base principal, QTD Prognoses: 
+                <input type="number" max="100000" min="100" id="quantidade" value="10">
+
+                <label>
+                    <input type="checkbox" value="usuario" id="user"> Usuario
+                </label>
+                <label>
+                    <input type="checkbox" value="modelo" id="model"> Modelo
+                </label>
+                <label>
+                    <input type="checkbox" value="card" id="card"> Card
+                </label>
+                <label>
+                    <input type="checkbox" value="prognose" id="prognose"> Prognose
+                </label>
+
+                <button onclick="carregar()" class="btn btn-primary">Carregar!</button>
+
+            </div>
+
+            <div id="etl" style="text-align: center;">
+                <button onclick="etl()" class="btn btn-success">Realizar ETL!</button>
+            </div>
+
+            <div id="status">
+                <h3>Status</h3>
+                <div class="progress">
+                    <div id="pgb1" class="progress-bar progress-bar-striped active" role="progressbar" style="width: 1%">
+                        <span id="temporaria"></span> <span id="status1"></span>%
+                    </div>
+                </div>
+
+                <h3>Status Geral</h3>
+                <div class="progress">
+                    <div id="pgb2" class="progress-bar progress-bar-striped active" role="progressbar" style="width: 1%">
+                        <span id="status2"></span>% <span id="concluido"></span> <span id="adicional"></span>
+                    </div>
+                </div>
+
+                <div id="permanente"></div>
+            </div>
+
+
+            <span class="label label-info" id="tempo"></span>
+            <span class="label label-warning" id="registros"></span>
+
+            <div id="erros"></div>
+
+            <span class="label label-danger" id="erro"></span>
+
+        </div> <!-- /container -->
+
+        <footer> <a href="http://mikeias.net" target="_blank">Miquéias Fernandes</a> - 2012204314 - 30 de Julho de 2017 </footer>
+
+    </body>
+</html>
